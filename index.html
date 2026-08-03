@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Role Assigner - Preset Edition</title>
+    <title>Live Role Assigner - Deployment Edition</title>
     <style>
         /* CSS: Light Theme */
         body {
@@ -57,9 +57,7 @@
             outline: none;
             transition: border-color 0.2s;
         }
-        input[type="number"]:focus, input[type="text"]:focus, select:focus {
-            border-color: #1877f2;
-        }
+        input[type="number"]:focus, input[type="text"]:focus, select:focus { border-color: #1877f2; }
         
         input[type="number"] { width: 60px; text-align: center; }
         input[type="text"] { width: 100%; box-sizing: border-box; }
@@ -67,7 +65,9 @@
 
         .name-list { max-height: 350px; overflow-y: auto; padding-right: 10px; margin-bottom: 15px; }
         .name-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .admin-select { flex-shrink: 0; width: 120px; background-color: #f0f2f5; }
+        
+        /* The Admin Dropdown styling */
+        .admin-select { flex-shrink: 0; width: 120px; background-color: #e7f3ff; border-color: #1877f2; font-weight: bold; }
 
         /* General Buttons */
         button {
@@ -119,16 +119,13 @@
         .role-delete:hover { color: #fff; }
 
         /* Timer Display */
-        #timer-display {
-            font-size: 48px; font-weight: 900; color: #1c1e21; letter-spacing: 2px; margin: 10px 0 20px 0;
-            font-family: monospace;
-        }
+        #timer-display { font-size: 48px; font-weight: 900; color: #1c1e21; letter-spacing: 2px; margin: 10px 0 20px 0; font-family: monospace; }
 
         /* Preset Section */
         .preset-box { background: #e7f3ff; border: 1px solid #1877f2; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
 
         /* SECRET ADMIN SYSTEM */
-        #secret-admin-trigger { position: fixed; top: 0; left: 0; width: 50px; height: 50px; z-index: 9999; cursor: default; }
+        #secret-admin-trigger { position: fixed; top: 0; left: 0; width: 60px; height: 60px; z-index: 9999; cursor: default; }
         #admin-roles-modal {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000;
             background-color: #ffffff; border: 2px solid #9360f7; padding: 25px; border-radius: 12px;
@@ -138,7 +135,7 @@
 </head>
 <body>
 
-    <!-- SECRET ADMIN TRIGGER AREA -->
+    <!-- SECRET ADMIN TRIGGER (DOUBLE CLICK TOP-LEFT CORNER) -->
     <div id="secret-admin-trigger" ondblclick="triggerAdminAction()"></div>
 
     <!-- SECRET ADMIN ROLE VIEWER (MODAL) -->
@@ -186,23 +183,24 @@
                     <option value="Neutral">Neutral</option>
                 </select>
             </div>
-            <button class="neutral" style="margin-top: 10px;" onclick="addCustomRole()">Add Role to Pool</button>
+            <button class="neutral" style="margin-top: 10px;" onclick="addCustomRole()">Add Role</button>
             <div id="custom-roles-list" style="text-align: left; margin-top: 10px;"></div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <button class="warning" style="margin-top:0;" onclick="goToNameSetup()">Edit Names</button>
-            <button style="margin-top:0;" onclick="startGameFromSetup()">Start Game</button>
-        </div>
+        <!-- Forced Flow to Names UI -->
+        <button class="warning" style="margin-top: 20px;" onclick="goToNameSetup()">Next: Player Names & Roles</button>
         <div id="error-msg"></div>
     </div>
 
-    <!-- SCREEN 2: Custom Names (AND HIDDEN ADMIN PRE-ASSIGN) -->
+    <!-- SCREEN 2: Custom Names & Admin UI -->
     <div id="names-screen" class="container hidden">
-        <h2>Edit Player Names</h2>
+        <h2>Player Names</h2>
+        <p style="color: #65676b; font-size: 14px; margin-top: 0;">(Tip: Admins can double-click the top-left of the screen here to pre-assign roles)</p>
+        
         <div id="name-inputs-container" class="name-list"></div>
-        <button onclick="startGame()">Save Names & Start</button>
-        <button class="neutral" onclick="saveNamesAndReturn()">Save Names & Go Back</button>
+        
+        <button onclick="startGame()">Start Game</button>
+        <button class="neutral" onclick="saveNamesAndReturn()">Back to Setup</button>
     </div>
 
     <!-- SCREEN 3 & 4: Pass Device & Reveal Roles -->
@@ -225,8 +223,6 @@
     <!-- SCREEN 5: Game Active -->
     <div id="game-active-screen" class="container hidden">
         <h2>Game in Progress</h2>
-        
-        <!-- VISIBLE TIMER -->
         <div id="timer-display">10:00</div>
 
         <div style="background: #f7f8fa; border: 1px solid #ced0d4; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left;">
@@ -242,7 +238,7 @@
         </div>
     </div>
 
-    <!-- SCREEN 6: Pre-Voting Kill Menu -->
+    <!-- SCREEN 6: Kill Menu -->
     <div id="kill-screen" class="container hidden">
         <h2 style="color: #e41e3f;">Who was killed?</h2>
         <p style="color: #65676b; font-size: 14px;">Select anyone who died during the round before the meeting was called.</p>
@@ -288,17 +284,21 @@
         let ejectedPlayer = null;
         let customRolesPool = [];
         let pendingKills = []; 
-        let currentNames = []; // Stores customized names between menus
+        let currentNames = []; 
 
         // --- TIMER STATE ---
         let timerInterval = null;
         let timeRemaining = 0;
 
-        // --- INITIALIZATION & PRESETS ---
+        // --- INITIALIZATION & ROBUST PRESETS ---
         window.onload = () => { renderPresets(); };
 
         function getPresets() {
-            return JSON.parse(localStorage.getItem('au_presets_light')) || {};
+            try {
+                return JSON.parse(localStorage.getItem('au_game_presets')) || {};
+            } catch (e) {
+                return {};
+            }
         }
 
         function renderPresets() {
@@ -311,11 +311,12 @@
         }
 
         function savePreset() {
-            const name = prompt("Enter a name for this preset (e.g., 'Friday Night Squad'):");
+            const name = prompt("Enter a name for this preset (e.g., 'Game Night 1'):");
             if (!name) return;
 
-            // Gather current active names if they exist, else generate defaults based on count
             const pCount = parseInt(document.getElementById('player-count').value);
+            
+            // Generate basic names if they haven't gone to the names screen yet
             let namesToSave = [];
             for (let i = 0; i < pCount; i++) {
                 namesToSave.push(currentNames[i] || `Player ${i+1}`);
@@ -331,12 +332,16 @@
 
             let presets = getPresets();
             presets[name] = data;
-            localStorage.setItem('au_presets_light', JSON.stringify(presets));
-            renderPresets();
-            
-            // Automatically select the newly saved preset
-            document.getElementById('preset-select').value = name;
-            alert("Preset Saved!");
+
+            try {
+                localStorage.setItem('au_game_presets', JSON.stringify(presets));
+                renderPresets();
+                document.getElementById('preset-select').value = name;
+                alert(`Preset '${name}' saved successfully!`);
+            } catch (e) {
+                alert("SAVE FAILED: Your browser is blocking local storage. If you are on GitHub pages, ensure you are not in Incognito Mode and that your browser allows cookies/site data for this page.");
+                console.error(e);
+            }
         }
 
         function loadPreset() {
@@ -355,7 +360,7 @@
             currentNames = data.names || [];
             
             renderCustomRolesUI();
-            alert(`Preset '${key}' loaded successfully!`);
+            alert(`Preset '${key}' loaded! Click 'Next: Player Names & Roles' to begin.`);
         }
 
         // --- NAVIGATION & ADMIN UTILITIES ---
@@ -370,14 +375,18 @@
             if(confirm("Are you sure you want to end this game and return to the main menu?")) location.reload();
         }
 
-        // SECRET ADMIN ACTION HANDLER
+        // THE SECRET ADMIN TRIGGER
         function triggerAdminAction() {
-            if (!document.getElementById('names-screen').classList.contains('hidden')) {
+            const namesScreen = document.getElementById('names-screen');
+            
+            // If we are on the Names Screen, toggle the Dropdowns
+            if (!namesScreen.classList.contains('hidden')) {
                 const selects = document.querySelectorAll('.admin-select');
                 if(selects.length > 0) {
                     selects.forEach(el => el.classList.toggle('hidden'));
                 }
             } 
+            // If the game has started, show the cheat sheet modal
             else if (players.length > 0) {
                 const modal = document.getElementById('admin-roles-modal');
                 if (modal.classList.contains('hidden')) {
@@ -421,15 +430,28 @@
             });
         }
 
-        // --- PHASE 1: SETUP & NAMES ---
+        // --- PHASE 1: SETUP TO NAMES UI ---
         function goToNameSetup() {
             const totalPlayers = parseInt(document.getElementById('player-count').value);
+            const maxImposters = parseInt(document.getElementById('imposter-count').value);
+            const errorMsg = document.getElementById('error-msg');
+
+            const customImposters = customRolesPool.filter(r => r.alignment === 'Imposter').length;
+            const nonImposterCustoms = customRolesPool.filter(r => r.alignment !== 'Imposter').length;
+
+            if (customImposters > maxImposters) { errorMsg.innerText = "Error: Too many Custom Imposter roles!"; return; }
+            if ((maxImposters + nonImposterCustoms) >= totalPlayers) { errorMsg.innerText = "Error: Too many roles for player count!"; return; }
+            if (totalPlayers < 3) { errorMsg.innerText = "Error: Need at least 3 players!"; return; }
             
+            errorMsg.innerText = "";
+            
+            // Build the Options for the Admin Pre-Assign Tool
             let optionsHTML = `<option value="Random">Random</option><option value="Imposter">Imposter</option><option value="Crewmate">Crewmate</option>`;
             customRolesPool.forEach(r => optionsHTML += `<option value="${r.roleName}">${r.roleName}</option>`);
 
             const container = document.getElementById('name-inputs-container');
             container.innerHTML = "";
+            
             for(let i = 0; i < totalPlayers; i++) {
                 let defaultVal = currentNames[i] || `Player ${i+1}`;
                 container.innerHTML += `
@@ -456,45 +478,27 @@
             showScreen('setup-screen');
         }
 
-        function startGameFromSetup() {
-            // Ensure currentNames matches the count if they skipped the edit screen
-            const totalPlayers = parseInt(document.getElementById('player-count').value);
-            for(let i = 0; i < totalPlayers; i++) {
-                if(!currentNames[i]) currentNames[i] = `Player ${i+1}`;
-            }
-            // Generate dummy pre-assign logic since inputs don't exist
-            currentNames.preAssigned = Array(totalPlayers).fill('Random');
-            initGameEngine();
-        }
-
+        // --- START GAME ROUTINE ---
         function startGame() {
             extractNamesFromInputs();
             
-            // Grab pre-assigns from the hidden admin inputs if on Name screen
             const totalPlayers = parseInt(document.getElementById('player-count').value);
             currentNames.preAssigned = [];
+            
+            // Grab pre-assignments explicitly from the UI
             for(let i = 0; i < totalPlayers; i++) {
-                currentNames.preAssigned.push(document.getElementById(`preassign-${i}`).value);
+                const selectElement = document.getElementById(`preassign-${i}`);
+                currentNames.preAssigned.push(selectElement ? selectElement.value : 'Random');
             }
 
             initGameEngine();
         }
 
-        // --- CORE GAME ENGINE INITIALIZATION ---
         function initGameEngine() {
             const totalPlayers = parseInt(document.getElementById('player-count').value);
             const maxImposters = parseInt(document.getElementById('imposter-count').value);
             const gameMins = parseInt(document.getElementById('game-time-input').value) || 10;
-            const errorMsg = document.getElementById('error-msg');
-
-            const customImposters = customRolesPool.filter(r => r.alignment === 'Imposter').length;
-            const nonImposterCustoms = customRolesPool.filter(r => r.alignment !== 'Imposter').length;
-
-            if (customImposters > maxImposters) { errorMsg.innerText = "Error: Too many Custom Imposter roles!"; return; }
-            if ((maxImposters + nonImposterCustoms) >= totalPlayers) { errorMsg.innerText = "Error: Too many roles for player count!"; return; }
-            if (totalPlayers < 3) { errorMsg.innerText = "Error: Need at least 3 players!"; return; }
             
-            errorMsg.innerText = "";
             timeRemaining = gameMins * 60; 
             
             let expectedPool = [];
@@ -520,7 +524,7 @@
                 }
             });
 
-            if(error) { alert("ADMIN ERROR: Invalid pre-assignments."); return; }
+            if(error) { alert("ADMIN ERROR: You pre-assigned more of a specific role than the game allows. Adjust your settings."); return; }
 
             for (let i = remainingDeck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -548,8 +552,7 @@
 
         function reassignRoles() {
             if(!confirm("This will revive everyone, reshuffle roles to the current players, and restart the timer. Continue?")) return;
-            
-            // Add a dummy pre-assigned array (all random) for the re-roll
+            // Overwrite old pre-assigns so everyone gets a random re-roll
             currentNames.preAssigned = Array(players.length).fill('Random');
             initGameEngine();
         }
@@ -563,7 +566,7 @@
             display.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
             if (timeRemaining <= 60) {
-                display.style.color = '#e41e3f'; // Red when under 1 min
+                display.style.color = '#e41e3f';
             } else {
                 display.style.color = '#1c1e21';
             }
@@ -697,7 +700,6 @@
                     const btn = document.createElement('div');
                     btn.className = 'player-card';
                     
-                    // Allow Self Voting!
                     btn.innerText = p.name === voter.name ? `${p.name} (You)` : p.name;
                     
                     btn.onclick = () => {
