@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Role Assigner - Preset Edition</title>
+    <style>
+        /* CSS: Light Theme */
+        body {
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #e4e6eb;
+            position: relative;
+        }
+
+        .hidden { display: none !important; }
+
+        h2 { margin-top: 0; font-size: 26px; letter-spacing: 0.5px; text-transform: uppercase; color: #050505; }
+        h3 { color: #65676b; }
+
+        .input-group {
+            margin: 12px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f7f8fa;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ced0d4;
+        }
+
+        input[type="number"], input[type="text"], select {
+            background-color: #ffffff;
+            color: #1c1e21;
+            border: 1px solid #ced0d4;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            border-color: #1877f2;
+        }
+        
+        input[type="number"] { width: 60px; text-align: center; }
+        input[type="text"] { width: 100%; box-sizing: border-box; }
+        select { width: 100px; }
+
+        .name-list { max-height: 350px; overflow-y: auto; padding-right: 10px; margin-bottom: 15px; }
+        .name-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .admin-select { flex-shrink: 0; width: 120px; background-color: #f0f2f5; }
+
+        /* General Buttons */
+        button {
+            background-color: #31a24c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            text-transform: uppercase;
+            transition: 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        button:active { transform: translateY(1px); }
+        button.danger { background-color: #e41e3f; }
+        button.neutral { background-color: #1877f2; }
+        button.warning { background-color: #f2a100; color: #fff; }
+        button.magic { background-color: #9360f7; }
+        
+        /* Interactive Grids */
+        .interactive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .player-card {
+            background-color: #ffffff; border: 2px solid #ced0d4; border-radius: 8px; padding: 15px 10px;
+            color: #1c1e21; font-weight: bold; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
+        }
+        .player-card:hover { border-color: #1877f2; background-color: #f1f8ff; color: #1877f2; }
+        .card-killed { background-color: #ffebe9 !important; border-color: #e41e3f !important; color: #e41e3f !important; text-decoration: line-through; }
+        .skip-vote-btn { background-color: #e4e6eb; color: #1c1e21; border: 2px solid #ced0d4; width: 100%; padding: 15px; margin-top: 0; }
+        .skip-vote-btn:hover { border-color: #65676b; background-color: #d8dadf; }
+
+        /* Typography & Visuals */
+        .role-display { font-size: 36px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; }
+        .imposter-text { color: #e41e3f; }
+        .crewmate-text { color: #31a24c; }
+        .neutral-text { color: #f2a100; }
+        
+        #teammate-box { background: #ffebe9; border: 1px solid #e41e3f; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: left; font-size: 14px; }
+        #error-msg { color: #e41e3f; font-size: 14px; margin-top: 10px; font-weight: bold; }
+        
+        .role-tag { padding: 5px 10px; border-radius: 20px; display: inline-block; margin: 5px; font-size: 14px; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tag-imp { background: #e41e3f; } .tag-crew { background: #31a24c; } .tag-neu { background: #f2a100; }
+        .role-delete { cursor: pointer; font-weight: bold; margin-left: 8px; color: rgba(255,255,255,0.8); }
+        .role-delete:hover { color: #fff; }
+
+        /* Timer Display */
+        #timer-display {
+            font-size: 48px; font-weight: 900; color: #1c1e21; letter-spacing: 2px; margin: 10px 0 20px 0;
+            font-family: monospace;
+        }
+
+        /* Preset Section */
+        .preset-box { background: #e7f3ff; border: 1px solid #1877f2; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+
+        /* SECRET ADMIN SYSTEM */
+        #secret-admin-trigger { position: fixed; top: 0; left: 0; width: 50px; height: 50px; z-index: 9999; cursor: default; }
+        #admin-roles-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000;
+            background-color: #ffffff; border: 2px solid #9360f7; padding: 25px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(147, 96, 247, 0.2); width: 90%; max-width: 400px; text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SECRET ADMIN TRIGGER AREA -->
+    <div id="secret-admin-trigger" ondblclick="triggerAdminAction()"></div>
+
+    <!-- SECRET ADMIN ROLE VIEWER (MODAL) -->
+    <div id="admin-roles-modal" class="hidden">
+        <h2 style="color: #9360f7; font-size: 20px; border-bottom: 1px solid #ced0d4; padding-bottom: 10px;">Admin: Player Status</h2>
+        <div id="admin-roles-list" style="max-height: 300px; overflow-y: auto; font-size: 16px; line-height: 1.6; margin-top: 10px;"></div>
+        <button class="neutral" onclick="document.getElementById('admin-roles-modal').classList.add('hidden')">Close</button>
+    </div>
+
+    <!-- SCREEN 1: Game Setup -->
+    <div id="setup-screen" class="container">
+        <h2>Game Setup</h2>
+        
+        <!-- PRESETS SECTION -->
+        <div class="preset-box">
+            <h3 style="margin-top:0; margin-bottom: 10px; font-size: 16px; color: #1877f2;">Presets & Saves</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <select id="preset-select" style="flex-grow: 1;"></select>
+                <button class="neutral" style="margin: 0; width: auto; padding: 10px 15px;" onclick="loadPreset()">Load</button>
+            </div>
+            <button class="magic" style="margin-top: 0;" onclick="savePreset()">Save Current Settings as Preset</button>
+        </div>
+
+        <div class="input-group" style="border-color: #1877f2; background: #ffffff;">
+            <label style="color:#1877f2; font-weight:bold;">Game Timer (Mins):</label>
+            <input type="number" id="game-time-input" value="10" min="1" max="60" style="border-color:#1877f2;">
+        </div>
+
+        <div class="input-group">
+            <label>Total Players:</label>
+            <input type="number" id="player-count" value="5" min="3" max="15">
+        </div>
+        <div class="input-group">
+            <label>Max Imposters:</label>
+            <input type="number" id="imposter-count" value="1" min="1" max="5">
+        </div>
+
+        <div style="background: #f7f8fa; padding: 12px; border-radius: 8px; border: 1px solid #ced0d4; margin-top: 15px;">
+            <label style="display:block; margin-bottom: 10px; text-align: left; font-weight: bold;">Add Custom Roles:</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="custom-role-input" placeholder="e.g. Medic, Jester" style="margin:0; flex-grow: 1;">
+                <select id="custom-role-alignment" style="margin:0;">
+                    <option value="Crewmate">Crew</option>
+                    <option value="Imposter">Imp</option>
+                    <option value="Neutral">Neutral</option>
+                </select>
+            </div>
+            <button class="neutral" style="margin-top: 10px;" onclick="addCustomRole()">Add Role to Pool</button>
+            <div id="custom-roles-list" style="text-align: left; margin-top: 10px;"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <button class="warning" style="margin-top:0;" onclick="goToNameSetup()">Edit Names</button>
+            <button style="margin-top:0;" onclick="startGameFromSetup()">Start Game</button>
+        </div>
+        <div id="error-msg"></div>
+    </div>
+
+    <!-- SCREEN 2: Custom Names (AND HIDDEN ADMIN PRE-ASSIGN) -->
+    <div id="names-screen" class="container hidden">
+        <h2>Edit Player Names</h2>
+        <div id="name-inputs-container" class="name-list"></div>
+        <button onclick="startGame()">Save Names & Start</button>
+        <button class="neutral" onclick="saveNamesAndReturn()">Save Names & Go Back</button>
+    </div>
+
+    <!-- SCREEN 3 & 4: Pass Device & Reveal Roles -->
+    <div id="pass-screen" class="container hidden">
+        <h2 id="player-turn-text">Pass device to...</h2>
+        <button class="neutral" onclick="revealRole()">Show My Role</button>
+    </div>
+
+    <div id="reveal-screen" class="container hidden">
+        <h2 id="reveal-name" style="color: #65676b;">You are a...</h2>
+        <div id="role-display" class="role-display"></div>
+        
+        <div id="teammate-box" class="hidden">
+            <strong style="color: #e41e3f;">Your Team:</strong>
+            <ul id="teammate-list" style="margin: 5px 0 0 0; padding-left: 20px;"></ul>
+        </div>
+        <button class="danger" onclick="nextPlayer()">Hide Role & Next</button>
+    </div>
+
+    <!-- SCREEN 5: Game Active -->
+    <div id="game-active-screen" class="container hidden">
+        <h2>Game in Progress</h2>
+        
+        <!-- VISIBLE TIMER -->
+        <div id="timer-display">10:00</div>
+
+        <div style="background: #f7f8fa; border: 1px solid #ced0d4; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left;">
+            <strong>Alive Players:</strong>
+            <ul id="alive-players-list"></ul>
+        </div>
+        
+        <button class="danger" onclick="openKillMenu()">Report Dead Body / Call Meeting</button>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="warning" onclick="reassignRoles()">Re-Roll Roles</button>
+            <button class="neutral" onclick="resetGame()">End Lobby</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 6: Pre-Voting Kill Menu -->
+    <div id="kill-screen" class="container hidden">
+        <h2 style="color: #e41e3f;">Who was killed?</h2>
+        <p style="color: #65676b; font-size: 14px;">Select anyone who died during the round before the meeting was called.</p>
+        <div id="kill-grid" class="interactive-grid"></div>
+        <button class="warning" onclick="confirmKills()">Confirm & Proceed</button>
+    </div>
+
+    <!-- SCREEN 7 & 8: Voting Menu -->
+    <div id="vote-pass-screen" class="container hidden">
+        <h2>Voting Phase</h2>
+        <h3 id="vote-turn-text">Pass device to...</h3>
+        <button class="neutral" onclick="showVoteScreen()">Ready to Vote</button>
+    </div>
+
+    <div id="vote-screen" class="container hidden">
+        <h2 id="voting-as-text" style="font-size: 18px; color: #65676b;">Who are you voting out?</h2>
+        <div id="vote-buttons-container" class="interactive-grid"></div>
+        <button class="skip-vote-btn" onclick="castVote('Skip')">Skip Vote</button>
+    </div>
+
+    <!-- SCREEN 9: Ejection -->
+    <div id="eject-screen" class="container hidden">
+        <h2>Voting Results</h2>
+        <p id="eject-result-text" style="font-size: 18px; margin-bottom: 20px;"></p>
+        <button id="reveal-ejected-btn" class="danger hidden" onclick="revealEjectedRole()">Reveal Their Role</button>
+        <button id="continue-game-btn" class="neutral hidden" onclick="finalizeEjection()">Continue</button>
+    </div>
+
+    <!-- SCREEN 10: Victory Screen -->
+    <div id="victory-screen" class="container hidden">
+        <h2 id="victory-text" style="font-size: 28px;"></h2>
+        <p id="victory-subtext" style="color: #65676b;"></p>
+        <button class="warning" onclick="reassignRoles()">Play Again (Same Players)</button>
+        <button class="neutral" onclick="resetGame()">Start New Lobby</button>
+    </div>
+
+    <script>
+        // --- DATA STATE ---
+        let players = []; 
+        let currentQueue = []; 
+        let queueIndex = 0;
+        let votes = {}; 
+        let ejectedPlayer = null;
+        let customRolesPool = [];
+        let pendingKills = []; 
+        let currentNames = []; // Stores customized names between menus
+
+        // --- TIMER STATE ---
+        let timerInterval = null;
+        let timeRemaining = 0;
+
+        // --- INITIALIZATION & PRESETS ---
+        window.onload = () => { renderPresets(); };
+
+        function getPresets() {
+            return JSON.parse(localStorage.getItem('au_presets_light')) || {};
+        }
+
+        function renderPresets() {
+            const presets = getPresets();
+            const select = document.getElementById('preset-select');
+            select.innerHTML = `<option value="">-- Select a Preset --</option>`;
+            for (const key in presets) {
+                select.innerHTML += `<option value="${key}">${key}</option>`;
+            }
+        }
+
+        function savePreset() {
+            const name = prompt("Enter a name for this preset (e.g., 'Friday Night Squad'):");
+            if (!name) return;
+
+            // Gather current active names if they exist, else generate defaults based on count
+            const pCount = parseInt(document.getElementById('player-count').value);
+            let namesToSave = [];
+            for (let i = 0; i < pCount; i++) {
+                namesToSave.push(currentNames[i] || `Player ${i+1}`);
+            }
+
+            const data = {
+                playerCount: pCount,
+                imposterCount: document.getElementById('imposter-count').value,
+                gameTime: document.getElementById('game-time-input').value,
+                customRoles: customRolesPool,
+                names: namesToSave
+            };
+
+            let presets = getPresets();
+            presets[name] = data;
+            localStorage.setItem('au_presets_light', JSON.stringify(presets));
+            renderPresets();
+            
+            // Automatically select the newly saved preset
+            document.getElementById('preset-select').value = name;
+            alert("Preset Saved!");
+        }
+
+        function loadPreset() {
+            const select = document.getElementById('preset-select');
+            const key = select.value;
+            if (!key) return;
+
+            const presets = getPresets();
+            const data = presets[key];
+
+            document.getElementById('player-count').value = data.playerCount;
+            document.getElementById('imposter-count').value = data.imposterCount;
+            document.getElementById('game-time-input').value = data.gameTime;
+            
+            customRolesPool = data.customRoles || [];
+            currentNames = data.names || [];
+            
+            renderCustomRolesUI();
+            alert(`Preset '${key}' loaded successfully!`);
+        }
+
+        // --- NAVIGATION & ADMIN UTILITIES ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.container').forEach(el => {
+                if (el.id !== 'admin-roles-modal') el.classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function resetGame() {
+            if(confirm("Are you sure you want to end this game and return to the main menu?")) location.reload();
+        }
+
+        // SECRET ADMIN ACTION HANDLER
+        function triggerAdminAction() {
+            if (!document.getElementById('names-screen').classList.contains('hidden')) {
+                const selects = document.querySelectorAll('.admin-select');
+                if(selects.length > 0) {
+                    selects.forEach(el => el.classList.toggle('hidden'));
+                }
+            } 
+            else if (players.length > 0) {
+                const modal = document.getElementById('admin-roles-modal');
+                if (modal.classList.contains('hidden')) {
+                    const list = document.getElementById('admin-roles-list');
+                    list.innerHTML = "";
+                    players.forEach(p => {
+                        let color = p.alignment === 'Imposter' ? '#e41e3f' : (p.alignment === 'Crewmate' ? '#31a24c' : '#f2a100');
+                        let status = p.isAlive ? '' : '<span style="color:#e41e3f; font-weight:bold;"> [DEAD]</span>';
+                        list.innerHTML += `<div style="margin-bottom: 8px; border-bottom: 1px solid #e4e6eb; padding-bottom: 5px; color: #1c1e21;">
+                            <strong>${p.name}:</strong> <span style="color:${color}">${p.role}</span> ${status}
+                        </div>`;
+                    });
+                    modal.classList.remove('hidden');
+                } else {
+                    modal.classList.add('hidden');
+                }
+            }
+        }
+
+        // --- CUSTOM ROLES LOGIC ---
+        function addCustomRole() {
+            const input = document.getElementById('custom-role-input');
+            const alignSelect = document.getElementById('custom-role-alignment');
+            const roleName = input.value.trim();
+            if (roleName) {
+                customRolesPool.push({ roleName: roleName, alignment: alignSelect.value });
+                input.value = "";
+                renderCustomRolesUI();
+            }
+        }
+        function removeCustomRole(index) {
+            customRolesPool.splice(index, 1);
+            renderCustomRolesUI();
+        }
+        function renderCustomRolesUI() {
+            const container = document.getElementById('custom-roles-list');
+            container.innerHTML = "";
+            customRolesPool.forEach((role, index) => {
+                let tagClass = role.alignment === 'Imposter' ? 'tag-imp' : (role.alignment === 'Crewmate' ? 'tag-crew' : 'tag-neu');
+                container.innerHTML += `<div class="role-tag ${tagClass}">${role.roleName} (${role.alignment}) <span class="role-delete" onclick="removeCustomRole(${index})">×</span></div>`;
+            });
+        }
+
+        // --- PHASE 1: SETUP & NAMES ---
+        function goToNameSetup() {
+            const totalPlayers = parseInt(document.getElementById('player-count').value);
+            
+            let optionsHTML = `<option value="Random">Random</option><option value="Imposter">Imposter</option><option value="Crewmate">Crewmate</option>`;
+            customRolesPool.forEach(r => optionsHTML += `<option value="${r.roleName}">${r.roleName}</option>`);
+
+            const container = document.getElementById('name-inputs-container');
+            container.innerHTML = "";
+            for(let i = 0; i < totalPlayers; i++) {
+                let defaultVal = currentNames[i] || `Player ${i+1}`;
+                container.innerHTML += `
+                <div class="name-row">
+                    <input type="text" id="name-${i}" placeholder="Player ${i+1}" value="${defaultVal}">
+                    <select id="preassign-${i}" class="admin-select hidden">${optionsHTML}</select>
+                </div>`;
+            }
+            showScreen('names-screen');
+        }
+
+        function extractNamesFromInputs() {
+            const totalPlayers = parseInt(document.getElementById('player-count').value);
+            currentNames = [];
+            for(let i = 0; i < totalPlayers; i++) {
+                let input = document.getElementById(`name-${i}`);
+                if (input) currentNames.push(input.value.trim() || `Player ${i+1}`);
+                else currentNames.push(`Player ${i+1}`);
+            }
+        }
+
+        function saveNamesAndReturn() {
+            extractNamesFromInputs();
+            showScreen('setup-screen');
+        }
+
+        function startGameFromSetup() {
+            // Ensure currentNames matches the count if they skipped the edit screen
+            const totalPlayers = parseInt(document.getElementById('player-count').value);
+            for(let i = 0; i < totalPlayers; i++) {
+                if(!currentNames[i]) currentNames[i] = `Player ${i+1}`;
+            }
+            // Generate dummy pre-assign logic since inputs don't exist
+            currentNames.preAssigned = Array(totalPlayers).fill('Random');
+            initGameEngine();
+        }
+
+        function startGame() {
+            extractNamesFromInputs();
+            
+            // Grab pre-assigns from the hidden admin inputs if on Name screen
+            const totalPlayers = parseInt(document.getElementById('player-count').value);
+            currentNames.preAssigned = [];
+            for(let i = 0; i < totalPlayers; i++) {
+                currentNames.preAssigned.push(document.getElementById(`preassign-${i}`).value);
+            }
+
+            initGameEngine();
+        }
+
+        // --- CORE GAME ENGINE INITIALIZATION ---
+        function initGameEngine() {
+            const totalPlayers = parseInt(document.getElementById('player-count').value);
+            const maxImposters = parseInt(document.getElementById('imposter-count').value);
+            const gameMins = parseInt(document.getElementById('game-time-input').value) || 10;
+            const errorMsg = document.getElementById('error-msg');
+
+            const customImposters = customRolesPool.filter(r => r.alignment === 'Imposter').length;
+            const nonImposterCustoms = customRolesPool.filter(r => r.alignment !== 'Imposter').length;
+
+            if (customImposters > maxImposters) { errorMsg.innerText = "Error: Too many Custom Imposter roles!"; return; }
+            if ((maxImposters + nonImposterCustoms) >= totalPlayers) { errorMsg.innerText = "Error: Too many roles for player count!"; return; }
+            if (totalPlayers < 3) { errorMsg.innerText = "Error: Need at least 3 players!"; return; }
+            
+            errorMsg.innerText = "";
+            timeRemaining = gameMins * 60; 
+            
+            let expectedPool = [];
+            const customImps = customRolesPool.filter(r => r.alignment === 'Imposter');
+            expectedPool.push(...customImps.map(r=>r.roleName));
+            for(let i = 0; i < maxImposters - customImps.length; i++) expectedPool.push('Imposter');
+
+            const otherCustoms = customRolesPool.filter(r => r.alignment !== 'Imposter');
+            expectedPool.push(...otherCustoms.map(r=>r.roleName));
+
+            const crewNeeded = totalPlayers - expectedPool.length;
+            for(let i = 0; i < crewNeeded; i++) expectedPool.push('Crewmate');
+
+            let preAssigned = currentNames.preAssigned || Array(totalPlayers).fill('Random');
+            let remainingDeck = [...expectedPool];
+            let error = false;
+            
+            preAssigned.forEach(choice => {
+                if(choice !== 'Random') {
+                    let index = remainingDeck.indexOf(choice);
+                    if(index > -1) remainingDeck.splice(index, 1);
+                    else error = true; 
+                }
+            });
+
+            if(error) { alert("ADMIN ERROR: Invalid pre-assignments."); return; }
+
+            for (let i = remainingDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingDeck[i], remainingDeck[j]] = [remainingDeck[j], remainingDeck[i]];
+            }
+
+            players = [];
+            for(let i = 0; i < totalPlayers; i++) {
+                let nameStr = currentNames[i];
+                let assignedRoleName = preAssigned[i] === 'Random' ? remainingDeck.pop() : preAssigned[i];
+
+                let alignment = 'Crewmate';
+                if (assignedRoleName === 'Imposter') alignment = 'Imposter';
+                else {
+                    let customMatch = customRolesPool.find(r => r.roleName === assignedRoleName);
+                    if(customMatch) alignment = customMatch.alignment;
+                }
+                players.push({ name: nameStr, role: assignedRoleName, alignment: alignment, isAlive: true });
+            }
+
+            currentQueue = [...players];
+            queueIndex = 0;
+            showPassScreen();
+        }
+
+        function reassignRoles() {
+            if(!confirm("This will revive everyone, reshuffle roles to the current players, and restart the timer. Continue?")) return;
+            
+            // Add a dummy pre-assigned array (all random) for the re-roll
+            currentNames.preAssigned = Array(players.length).fill('Random');
+            initGameEngine();
+        }
+
+        // --- TIMER LOGIC ---
+        function updateTimerDisplay() {
+            const display = document.getElementById('timer-display');
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            
+            display.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeRemaining <= 60) {
+                display.style.color = '#e41e3f'; // Red when under 1 min
+            } else {
+                display.style.color = '#1c1e21';
+            }
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            updateTimerDisplay(); 
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function handleTimeOut() {
+            const victoryText = document.getElementById('victory-text');
+            const victorySubtext = document.getElementById('victory-subtext');
+            victoryText.innerText = "TIME'S UP!";
+            victoryText.style.color = '#e41e3f';
+            victorySubtext.innerText = "The Crewmates failed to eliminate the threats in time. Imposters Win!";
+            showScreen('victory-screen');
+        }
+
+        // --- PHASE 2: INITIAL ROLE REVEAL ---
+        function showPassScreen() {
+            document.getElementById('player-turn-text').innerText = `Pass device to ${currentQueue[queueIndex].name}`;
+            showScreen('pass-screen');
+        }
+
+        function revealRole() {
+            const player = currentQueue[queueIndex];
+            const display = document.getElementById('role-display');
+            const teamBox = document.getElementById('teammate-box');
+            const teamList = document.getElementById('teammate-list');
+            
+            document.getElementById('reveal-name').innerText = `${player.name}, you are a...`;
+            display.innerText = player.role;
+            teamBox.classList.add('hidden');
+            teamList.innerHTML = "";
+
+            if (player.alignment === 'Imposter') {
+                display.className = 'role-display imposter-text';
+                const teammates = players.filter(p => p.alignment === 'Imposter' && p.name !== player.name);
+                if (teammates.length > 0) {
+                    teammates.forEach(t => teamList.innerHTML += `<li>${t.name} <span style="color:#1c1e21; font-weight:normal;">(${t.role})</span></li>`);
+                    teamBox.classList.remove('hidden');
+                }
+            } 
+            else if (player.alignment === 'Crewmate') display.className = 'role-display crewmate-text';
+            else display.className = 'role-display neutral-text';
+
+            showScreen('reveal-screen');
+        }
+
+        function nextPlayer() {
+            queueIndex++;
+            if (queueIndex < currentQueue.length) showPassScreen();
+            else updateGameActiveScreen();
+        }
+
+        // --- PHASE 3: GAME ACTIVE ---
+        function updateGameActiveScreen() {
+            const list = document.getElementById('alive-players-list');
+            list.innerHTML = "";
+            players.forEach(p => { if(p.isAlive) list.innerHTML += `<li style="color:#1c1e21;">${p.name}</li>`; });
+            showScreen('game-active-screen');
+            startTimer();
+        }
+
+        // --- PHASE 4: PRE-MEETING KILL MENU ---
+        function openKillMenu() {
+            stopTimer(); 
+            pendingKills = [];
+            const grid = document.getElementById('kill-grid');
+            grid.innerHTML = "";
+
+            players.forEach(p => {
+                if(p.isAlive) {
+                    const btn = document.createElement('div');
+                    btn.className = 'player-card';
+                    btn.innerText = p.name;
+                    btn.onclick = () => {
+                        if (pendingKills.includes(p.name)) {
+                            pendingKills = pendingKills.filter(n => n !== p.name);
+                            btn.classList.remove('card-killed');
+                        } else {
+                            pendingKills.push(p.name);
+                            btn.classList.add('card-killed');
+                        }
+                    };
+                    grid.appendChild(btn);
+                }
+            });
+            showScreen('kill-screen');
+        }
+
+        function confirmKills() {
+            players.forEach(p => { if (pendingKills.includes(p.name)) p.isAlive = false; });
+            if (!checkWinConditions()) startVotingPhase();
+        }
+
+        // --- PHASE 5: VOTING SEQUENCE (WITH SELF VOTING) ---
+        function startVotingPhase() {
+            currentQueue = players.filter(p => p.isAlive);
+            queueIndex = 0;
+            votes = {}; 
+            showVotePassScreen();
+        }
+
+        function showVotePassScreen() {
+            document.getElementById('vote-turn-text').innerText = `Pass device to ${currentQueue[queueIndex].name}`;
+            showScreen('vote-pass-screen');
+        }
+
+        function showVoteScreen() {
+            const voter = currentQueue[queueIndex];
+            document.getElementById('voting-as-text').innerText = `Voting as: ${voter.name}`;
+            const container = document.getElementById('vote-buttons-container');
+            container.innerHTML = "";
+            
+            players.forEach(p => {
+                if (p.isAlive) {
+                    const btn = document.createElement('div');
+                    btn.className = 'player-card';
+                    
+                    // Allow Self Voting!
+                    btn.innerText = p.name === voter.name ? `${p.name} (You)` : p.name;
+                    
+                    btn.onclick = () => {
+                        if (!votes[p.name]) votes[p.name] = 0;
+                        votes[p.name]++;
+                        queueIndex++;
+                        if (queueIndex < currentQueue.length) showVotePassScreen();
+                        else tallyVotes();
+                    };
+                    
+                    container.appendChild(btn);
+                }
+            });
+            showScreen('vote-screen');
+        }
+
+        function castVote(targetName) {
+            if (!votes[targetName]) votes[targetName] = 0;
+            votes[targetName]++;
+            queueIndex++;
+            if (queueIndex < currentQueue.length) showVotePassScreen();
+            else tallyVotes();
+        }
+
+        function tallyVotes() {
+            let maxVotes = 0;
+            let tiedCandidates = [];
+            for (const target in votes) {
+                if (votes[target] > maxVotes) {
+                    maxVotes = votes[target];
+                    tiedCandidates = [target];
+                } else if (votes[target] === maxVotes) tiedCandidates.push(target);
+            }
+
+            const resultText = document.getElementById('eject-result-text');
+            const revealBtn = document.getElementById('reveal-ejected-btn');
+            const contBtn = document.getElementById('continue-game-btn');
+            
+            revealBtn.classList.add('hidden');
+            contBtn.classList.add('hidden');
+
+            if (tiedCandidates.length > 1 || tiedCandidates[0] === 'Skip' || tiedCandidates.length === 0) {
+                resultText.innerText = "Votes were tied or skipped. No one was ejected.";
+                ejectedPlayer = null;
+                contBtn.classList.remove('hidden');
+            } else {
+                const ejectedName = tiedCandidates[0];
+                ejectedPlayer = players.find(p => p.name === ejectedName);
+                ejectedPlayer.isAlive = false; 
+                resultText.innerText = `${ejectedName} was ejected.`;
+                revealBtn.classList.remove('hidden');
+            }
+            showScreen('eject-screen');
+        }
+
+        // --- PHASE 6: EJECTION REVEAL & WIN STATE MANAGER ---
+        function revealEjectedRole() {
+            const resultText = document.getElementById('eject-result-text');
+            let color = '#31a24c'; 
+            if(ejectedPlayer.alignment === 'Imposter') color = '#e41e3f';
+            else if (ejectedPlayer.alignment === 'Neutral') color = '#f2a100'; 
+
+            resultText.innerHTML = `${ejectedPlayer.name} was: <br><br><span style="color:${color}; font-size:24px; font-weight:bold; text-transform:uppercase;">${ejectedPlayer.role}</span>.`;
+            document.getElementById('reveal-ejected-btn').classList.add('hidden');
+            document.getElementById('continue-game-btn').classList.remove('hidden');
+        }
+
+        function finalizeEjection() {
+            if (!checkWinConditions()) updateGameActiveScreen(); 
+        }
+
+        function checkWinConditions() {
+            const aliveImps = players.filter(p => p.isAlive && p.alignment === 'Imposter').length;
+            const aliveNonImps = players.filter(p => p.isAlive && p.alignment !== 'Imposter').length; 
+            
+            const victoryText = document.getElementById('victory-text');
+            const victorySubtext = document.getElementById('victory-subtext');
+
+            if (aliveImps === 0) {
+                stopTimer(); 
+                victoryText.innerText = "CREWMATES WIN!";
+                victoryText.style.color = '#31a24c';
+                victorySubtext.innerText = "All Imposters have been eliminated.";
+                showScreen('victory-screen');
+                return true;
+            } else if (aliveImps >= aliveNonImps) {
+                stopTimer();
+                victoryText.innerText = "IMPOSTERS WIN!";
+                victoryText.style.color = '#e41e3f';
+                victorySubtext.innerText = "Imposters outnumber or equal the remaining players.";
+                showScreen('victory-screen');
+                return true;
+            }
+            return false; 
+        }
+    </script>
+</body>
+</html>
